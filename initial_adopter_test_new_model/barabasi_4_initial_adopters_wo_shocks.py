@@ -9,7 +9,6 @@
 # LIBRARIES
 # ==============================================================================
 import bisect                       # For CDF functionality
-# import matplotlib.pyplot as plt     # Drawing
 import networkx as nx               # Constructing and visualizing graph
 import numpy as np                  # Numerical methods
 import os                           # File reading and checking
@@ -25,13 +24,16 @@ from datetime import datetime       # Capture current time
 # ==============================================================================
 # GLOBAL CONSTANTS
 # ==============================================================================
+GRAPH_NUM_TRIAL = 40
 SHOCK_MEAN = 0
 SHOCK_SD = 0.01
-# BARABASI_EDGE_FACTOR = 5
+BARABASI_EDGE_FACTOR = 5
 SHOCK_PROB = 0.2
-# GRAPH_TOPOLOGY_NAME = ["random", "barabasi_albert", "watts_strogatz", "star"]
+#GRAPH_TOPOLOGY_NAME = ["random", "barabasi_albert", "watts_strogatz", "star"]
+GRAPH_TOPOLOGY_NAME = ["barabasi_albert", "watts_strogatz"]
 INITIAL_ADOPTER_GENERATOR = ["greedy", "degree", "influence", "discounter_degree"]
-# WATTS_STROGATZ_REWIRE_FACTOR = 0.2
+WATTS_STROGATZ_REWIRE_FACTOR = 0.2
+WATTS_STROGATZ_NEIGHBOURS = 4
 
 
 # ==============================================================================
@@ -41,7 +43,7 @@ INITIAL_ADOPTER_GENERATOR = ["greedy", "degree", "influence", "discounter_degree
 # These are parameters provided by the user.
 num_nodes = 0
 prob_of_initial = 0
-graphs = []
+graphs = {}
 
 initial_thresholds = []
 initial_states = []
@@ -292,114 +294,120 @@ def main():
         num_nodes = int(argv[1])
 
     else:
-        print("Error: Invalild command line inputs.")
-        print("Correct command line format: new_model_20171115.py <num_nodes>")
-        sys.exit()
+        temp_nodes = int(input("Enter number of players: "))
+        if (type(temp_nodes) == int and temp_nodes >= 10):
+            num_nodes = temp_nodes
+        else:
+            print("Error: not a valid input!")
+            print("Input must be an integer >= 10")
+            sys.exit()
 
     print("There are {} agents in the game.".format(num_nodes))
 
     #   generate random graphs
     random.seed(None)
-    BARABASI_EDGE_FACTOR = 5
 
     # record essential information
     # name files using current time
     current_time = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
 
+    dir_name = "{}-{}".format(num_nodes,current_time)
+    os.mkdir(dir_name)
+    adopter_record_greedy = open(dir_name + "/barabasi_{}_{}_greedy_adopter.hist".format(BARABASI_EDGE_FACTOR,num_nodes), "w")
+    adopter_record_influence = open(dir_name + "/barabasi_{}_{}_influence_adopter.hist".format(BARABASI_EDGE_FACTOR,num_nodes), "w")
+    adopter_record_degree = open(dir_name + "/barabasi_{}_{}_degree_adopter.hist".format(BARABASI_EDGE_FACTOR,num_nodes), "w")
+    adopter_record_DD = open(dir_name + "/barabasi_{}_{}_DD_adopter.hist".format(BARABASI_EDGE_FACTOR,num_nodes), "w")
 
-    adopter_record_greedy = open("barabasi_{}_{}_greedy_adopter_hist".format(BARABASI_EDGE_FACTOR,num_nodes), "w")
-    adopter_record_influence = open("barabasi_{}_{}_influence_adopter_hist".format(BARABASI_EDGE_FACTOR,num_nodes), "w")
-    adopter_record_degree = open("barabasi_{}_{}_degree_adopter_hist".format(BARABASI_EDGE_FACTOR,num_nodes), "w")
-    adopter_record_DD = open("barabasi_{}_{}_DD_adopter_hist".format(BARABASI_EDGE_FACTOR,num_nodes), "w")
+    for graph_num in range(GRAPH_NUM_TRIAL):
 
-
-    graph_num_trial = 40
-
-    for graph_num in range(graph_num_trial):
-
-        barabasi_graph = nx.barabasi_albert_graph(num_nodes, BARABASI_EDGE_FACTOR).to_directed()
-
-        graphs = [barabasi_graph]
+        for graph_type in GRAPH_TOPOLOGY_NAME:
+            if graph_type == "barabasi_albert":
+                graphs[graph_type] = nx.barabasi_albert_graph(num_nodes, BARABASI_EDGE_FACTOR).to_directed()
+            elif graph_type == "random":
+                return
+            elif graph_type == "watts_strogatz":
+                graphs[graph_type] = nx.watts_strogatz_graph(num_nodes, WATTS_STROGATZ_NEIGHBOURS, WATTS_STROGATZ_REWIRE_FACTOR).to_directed()
+            elif graph_type == "star":
+                return
 
         edge_in_graph = [[0 for x in range(num_nodes)] for y in range(num_nodes)]
 
-        for node in range(num_nodes):
+        for graph_type, graph in graphs.items():
 
-            in_degree = barabasi_graph.in_degree(node)
+            for node in range(num_nodes):
 
-            if not in_degree:
-                continue
+                in_degree = graph.in_degree(node)
 
-            # calculate the total weight of influence received from neighbors
-            total_weight = np.random.uniform(0, 1, 1)
-            edge_weights = np.random.uniform(0, 1, in_degree)
-            edge_weights_sum = sum(edge_weights)
-            # normalizing weights
-            edge_weights = edge_weights/edge_weights_sum*total_weight
+                if not in_degree:
+                    continue
 
-            for neighbor_index, neighbor in enumerate(barabasi_graph.predecessors(node)):
-                edge_in_graph[neighbor][node] = edge_weights[neighbor_index]
+                # calculate the total weight of influence received from neighbors
+                total_weight = np.random.uniform(0, 1, 1)
+                edge_weights = np.random.uniform(0, 1, in_degree)
+                edge_weights_sum = sum(edge_weights)
+                # normalizing weights
+                edge_weights = edge_weights/edge_weights_sum*total_weight
 
-        edge_info = [edge_in_graph]
+                for neighbor_index, neighbor in enumerate(graph.predecessors(node)):
+                    edge_in_graph[neighbor][node] = edge_weights[neighbor_index]
 
-        for total_initial_adopters in range(int(num_nodes * 0.1)):
+            edge_info = [edge_in_graph]
 
-            num_initial_adopter = total_initial_adopters+1
+            for total_initial_adopters in range(int(num_nodes * 0.1)):
 
-            # generate initial agent thresholds
-            # format: array of real numbers between 0 and 1
-            # indicating the magnitude of threshold
-            initial_thresholds = np.random.uniform(0, 1, num_nodes)
+                num_initial_adopter = total_initial_adopters+1
 
-
-            # generating an initial state for all agents
-            # format: array of 0 and 1 indicating the intial adoption decision
-            # 1 for adopters and 0 otherwise
-            # initial_state = np.random.binomial(1, prob_of_initial, num_nodes)
-            find_initial_adopter(0)
+                # generate initial agent thresholds
+                # format: array of real numbers between 0 and 1
+                # indicating the magnitude of threshold
+                initial_thresholds = np.random.uniform(0, 1, num_nodes)
 
 
-            for initial_adopter_approach_index, initial_adopter_approach_name in enumerate(INITIAL_ADOPTER_GENERATOR):
-#                print(initial_adopter_approach_name)
+                # generating an initial state for all agents
+                # format: array of 0 and 1 indicating the intial adoption decision
+                # 1 for adopters and 0 otherwise
+                # initial_state = np.random.binomial(1, prob_of_initial, num_nodes)
+                find_initial_adopter(0)
 
 
-                initial_state = initial_states[initial_adopter_approach_index] * 1
-                agent_thresholds = initial_thresholds * 1
-
-                for i in range(num_nodes):
-                    if (initial_state[i] == 1):
-                        agent_thresholds[i] = 0
+                for initial_adopter_approach_index, initial_adopter_approach_name in enumerate(INITIAL_ADOPTER_GENERATOR):
+                # print(initial_adopter_approach_name)
 
 
-                # agent_state = initial_states[initial_adopter_approach_index] * 1
-                agent_state = initial_state * 1
-                agent_thresholds = initial_thresholds * 1
+                    initial_state = initial_states[initial_adopter_approach_index] * 1
+                    agent_thresholds = initial_thresholds * 1
 
-#                print(num_initial_adopter)
-#                print(sum(initial_state))
+                    for i in range(num_nodes):
+                        if (initial_state[i] == 1):
+                            agent_thresholds[i] = 0
 
-                for i in range(num_nodes):
-                    if (initial_state[i] == 1):
-                        agent_thresholds[i] = 0
 
-                timer = time.time()
-                find_equilibrium(0, 0)
-                timer = time.time() - timer
+                    # agent_state = initial_states[initial_adopter_approach_index] * 1
+                    agent_state = initial_state * 1
+                    agent_thresholds = initial_thresholds * 1
 
-                if (initial_adopter_approach_index == 0):
-                    adopter_record_greedy.write("{:.5f} {} {} {:.5f}".format(adopter_generation_time[0], num_initial_adopter, sum(agent_state), timer))
-                    adopter_record_greedy.write("\n")
-                elif (initial_adopter_approach_index == 1):
-                    adopter_record_degree.write("{:.5f} {} {} {:.5f}".format(adopter_generation_time[1], num_initial_adopter, sum(agent_state), timer))
-                    adopter_record_degree.write("\n")
-                elif (initial_adopter_approach_index == 2):
-                    adopter_record_influence.write("{:.5f} {} {} {:.5f}".format(adopter_generation_time[2], num_initial_adopter, sum(agent_state), timer))
-                    adopter_record_influence.write("\n")
-                elif (initial_adopter_approach_index == 3):
-                    adopter_record_DD.write("{:.5f} {} {} {:.5f}".format(adopter_generation_time[3], num_initial_adopter, sum(agent_state), timer))
-                    adopter_record_DD.write("\n")
+                    # print(num_initial_adopter)
+                    # print(sum(initial_state))
+            
+                    for i in range(num_nodes):
+                        if (initial_state[i] == 1):
+                            agent_thresholds[i] = 0
 
-        #print("\n\n\n")
+                    timer = time.time()
+                    find_equilibrium(0, 0)
+                    timer = time.time() - timer
+
+                    if (initial_adopter_approach_index == 0):
+                        adopter_record = adopter_record_greedy
+                    elif (initial_adopter_approach_index == 1):
+                        adopter_record = adopter_record_degree
+                    elif (initial_adopter_approach_index == 2):
+                        adopter_record = adopter_record_influence
+                    elif (initial_adopter_approach_index == 3):
+                        adopter_record = adopter_record_DD
+
+                    adopter_record.write("{:.5f} {} {} {:.5f}".format(adopter_generation_time[initial_adopter_approach_index], num_initial_adopter, sum(agent_state), timer))
+                    adopter_record.write("\n")
 
     adopter_record_greedy.close()
     adopter_record_influence.close()
