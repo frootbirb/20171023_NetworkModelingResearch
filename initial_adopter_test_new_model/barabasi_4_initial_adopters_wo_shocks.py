@@ -46,12 +46,12 @@ prob_of_initial = 0
 graphs = {}
 
 initial_thresholds = []
-initial_states = []
-edge_info = []
+initial_states = {}
+edge_info = {}
 agent_state = []
 agent_thresholds = []
 num_initial_adopter = 0
-adopter_generation_time = [0, 0, 0, 0]
+adopter_generation_time = {}
 
 
 def initial_adopter_selection_by_degree(graph_index):
@@ -228,23 +228,22 @@ def initial_adopter_selection_by_discounter_degree(graph_index):
 
 def find_initial_adopter(graph_index):
     global initial_states, adopter_generation_time
-    initial_states = []
     timer = time.time()
-    initial_states.append(initial_adopter_selection_greedy(graph_index))
+    initial_states["greedy"] = initial_adopter_selection_greedy(graph_index)
     timer = time.time() - timer
-    adopter_generation_time[0] = timer
+    adopter_generation_time["greedy"] = timer
     timer = time.time()
-    initial_states.append(initial_adopter_selection_by_degree(graph_index))
+    initial_states["degree"] = initial_adopter_selection_by_degree(graph_index)
     timer = time.time() - timer
-    adopter_generation_time[1] = timer
+    adopter_generation_time["degree"] = timer
     timer = time.time()
-    initial_states.append(initial_adopter_selection_by_influence(graph_index))
+    initial_states["influence"] = initial_adopter_selection_by_influence(graph_index)
     timer = time.time() - timer
-    adopter_generation_time[2] = timer
+    adopter_generation_time["influence"] = timer
     timer = time.time()
-    initial_states.append(initial_adopter_selection_by_discounter_degree(graph_index))
+    initial_states["discounter_degree"] = initial_adopter_selection_by_discounter_degree(graph_index)
     timer = time.time() - timer
-    adopter_generation_time[3] = timer
+    adopter_generation_time["discounter_degree"] = timer
 
 
 def find_equilibrium(graph_index, round_num):
@@ -313,10 +312,8 @@ def main():
 
     dir_name = "{}-{}".format(num_nodes,current_time)
     os.mkdir(dir_name)
-    adopter_record_greedy = open(dir_name + "/barabasi_{}_{}_greedy_adopter.hist".format(BARABASI_EDGE_FACTOR,num_nodes), "w")
-    adopter_record_influence = open(dir_name + "/barabasi_{}_{}_influence_adopter.hist".format(BARABASI_EDGE_FACTOR,num_nodes), "w")
-    adopter_record_degree = open(dir_name + "/barabasi_{}_{}_degree_adopter.hist".format(BARABASI_EDGE_FACTOR,num_nodes), "w")
-    adopter_record_DD = open(dir_name + "/barabasi_{}_{}_DD_adopter.hist".format(BARABASI_EDGE_FACTOR,num_nodes), "w")
+
+    soln_dict = {}
 
     for graph_num in range(GRAPH_NUM_TRIAL):
 
@@ -329,6 +326,9 @@ def main():
                 graphs[graph_type] = nx.watts_strogatz_graph(num_nodes, WATTS_STROGATZ_NEIGHBOURS, WATTS_STROGATZ_REWIRE_FACTOR).to_directed()
             elif graph_type == "star":
                 return
+            
+            if graph_type not in soln_dict:
+                soln_dict[graph_type] = {}
 
         edge_in_graph = [[0 for x in range(num_nodes)] for y in range(num_nodes)]
 
@@ -351,7 +351,7 @@ def main():
                 for neighbor_index, neighbor in enumerate(graph.predecessors(node)):
                     edge_in_graph[neighbor][node] = edge_weights[neighbor_index]
 
-            edge_info = [edge_in_graph]
+            edge_info[graph_type] = edge_in_graph
 
             for total_initial_adopters in range(int(num_nodes * 0.1)):
 
@@ -367,14 +367,12 @@ def main():
                 # format: array of 0 and 1 indicating the intial adoption decision
                 # 1 for adopters and 0 otherwise
                 # initial_state = np.random.binomial(1, prob_of_initial, num_nodes)
-                find_initial_adopter(0)
+                find_initial_adopter(graph_type)
 
 
-                for initial_adopter_approach_index, initial_adopter_approach_name in enumerate(INITIAL_ADOPTER_GENERATOR):
-                # print(initial_adopter_approach_name)
+                for initial_adopter_approach in INITIAL_ADOPTER_GENERATOR:
 
-
-                    initial_state = initial_states[initial_adopter_approach_index] * 1
+                    initial_state = initial_states[initial_adopter_approach] * 1
                     agent_thresholds = initial_thresholds * 1
 
                     for i in range(num_nodes):
@@ -382,37 +380,32 @@ def main():
                             agent_thresholds[i] = 0
 
 
-                    # agent_state = initial_states[initial_adopter_approach_index] * 1
                     agent_state = initial_state * 1
                     agent_thresholds = initial_thresholds * 1
-
-                    # print(num_initial_adopter)
-                    # print(sum(initial_state))
             
                     for i in range(num_nodes):
                         if (initial_state[i] == 1):
                             agent_thresholds[i] = 0
 
                     timer = time.time()
-                    find_equilibrium(0, 0)
+                    find_equilibrium(graph_type, 0)
                     timer = time.time() - timer
 
-                    if (initial_adopter_approach_index == 0):
-                        adopter_record = adopter_record_greedy
-                    elif (initial_adopter_approach_index == 1):
-                        adopter_record = adopter_record_degree
-                    elif (initial_adopter_approach_index == 2):
-                        adopter_record = adopter_record_influence
-                    elif (initial_adopter_approach_index == 3):
-                        adopter_record = adopter_record_DD
+                    if initial_adopter_approach not in soln_dict[graph_type]:
+                        soln_dict[graph_type][initial_adopter_approach] = []
 
-                    adopter_record.write("{:.5f} {} {} {:.5f}".format(adopter_generation_time[initial_adopter_approach_index], num_initial_adopter, sum(agent_state), timer))
-                    adopter_record.write("\n")
+                    info = "{:.5f} {} {} {:.5f}".format(adopter_generation_time[initial_adopter_approach], num_initial_adopter, sum(agent_state), timer)
+                    
+                    soln_dict[graph_type][initial_adopter_approach].append(info)
 
-    adopter_record_greedy.close()
-    adopter_record_influence.close()
-    adopter_record_degree.close()
-    adopter_record_DD.close()
+    # Handles recorded information and writes to files
+    for graph_type, graph_info in soln_dict.items():
+        for initial_adopter_approach, content in graph_info.items():
+            adopter_record = open(dir_name + "/{}_{}_{}.hist".format(num_nodes,graph_type,initial_adopter_approach), "w")
+            for line in content:
+                adopter_record.write(line)
+                adopter_record.write("\n")
+            adopter_record.close()
 
 
 main()
