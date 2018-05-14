@@ -321,12 +321,12 @@ def main():
             if graph_type == "barabasi_albert":
                 graphs[graph_type] = nx.barabasi_albert_graph(num_nodes, BARABASI_EDGE_FACTOR).to_directed()
             elif graph_type == "random":
-                return
+                graphs[graph_type] = nx.random_regular_graph(num_nodes, RANDOM_REGULAR_DEGREE).to_directed()
             elif graph_type == "watts_strogatz":
                 graphs[graph_type] = nx.watts_strogatz_graph(num_nodes, WATTS_STROGATZ_NEIGHBOURS, WATTS_STROGATZ_REWIRE_FACTOR).to_directed()
             elif graph_type == "star":
-                return
-            
+                graph[graph_type] = nx.star_graph(num_nodes).to_directed()
+
             if graph_type not in soln_dict:
                 soln_dict[graph_type] = {}
 
@@ -378,7 +378,6 @@ def main():
                     for i in range(num_nodes):
                         if (initial_state[i] == 1):
                             agent_thresholds[i] = 0
-
 
                     agent_state = initial_state * 1
                     agent_thresholds = initial_thresholds * 1
