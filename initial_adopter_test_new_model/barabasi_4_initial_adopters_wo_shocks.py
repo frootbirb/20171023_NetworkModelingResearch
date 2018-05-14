@@ -29,11 +29,11 @@ SHOCK_MEAN = 0
 SHOCK_SD = 0.01
 BARABASI_EDGE_FACTOR = 5
 SHOCK_PROB = 0.2
-#GRAPH_TOPOLOGY_NAME = ["random", "barabasi_albert", "watts_strogatz", "star"]
-GRAPH_TOPOLOGY_NAME = ["barabasi_albert", "watts_strogatz"]
+GRAPH_TOPOLOGY_NAME = ["random", "barabasi_albert", "watts_strogatz", "star"]
 INITIAL_ADOPTER_GENERATOR = ["greedy", "degree", "influence", "discounter_degree"]
 WATTS_STROGATZ_REWIRE_FACTOR = 0.2
 WATTS_STROGATZ_NEIGHBOURS = 4
+RANDOM_REGULAR_DEGREE = 4
 
 
 # ==============================================================================
@@ -324,11 +324,11 @@ def main():
             if graph_type == "barabasi_albert":
                 graphs[graph_type] = nx.barabasi_albert_graph(num_nodes, BARABASI_EDGE_FACTOR).to_directed()
             elif graph_type == "random":
-                return
+                graphs[graph_type] = nx.random_regular_graph(num_nodes, RANDOM_REGULAR_DEGREE).to_directed()
             elif graph_type == "watts_strogatz":
                 graphs[graph_type] = nx.watts_strogatz_graph(num_nodes, WATTS_STROGATZ_NEIGHBOURS, WATTS_STROGATZ_REWIRE_FACTOR).to_directed()
             elif graph_type == "star":
-                return
+                graph[graph_type] = nx.star_graph(num_nodes).to_directed()
 
         edge_in_graph = [[0 for x in range(num_nodes)] for y in range(num_nodes)]
 
@@ -388,7 +388,7 @@ def main():
 
                     # print(num_initial_adopter)
                     # print(sum(initial_state))
-            
+
                     for i in range(num_nodes):
                         if (initial_state[i] == 1):
                             agent_thresholds[i] = 0
