@@ -221,30 +221,19 @@ def initial_adopter_selection_by_discounter_degree(graph_index):
         node = node + 1
 
     return discounted_degree_optimal
+        
 
-
-
-
-
-def find_initial_adopter(graph_index):
-    global initial_states, adopter_generation_time
-    timer = time.time()
-    initial_states["greedy"] = initial_adopter_selection_greedy(graph_index)
-    timer = time.time() - timer
-    adopter_generation_time["greedy"] = timer
-    timer = time.time()
-    initial_states["degree"] = initial_adopter_selection_by_degree(graph_index)
-    timer = time.time() - timer
-    adopter_generation_time["degree"] = timer
-    timer = time.time()
-    initial_states["influence"] = initial_adopter_selection_by_influence(graph_index)
-    timer = time.time() - timer
-    adopter_generation_time["influence"] = timer
-    timer = time.time()
-    initial_states["discounter_degree"] = initial_adopter_selection_by_discounter_degree(graph_index)
-    timer = time.time() - timer
-    adopter_generation_time["discounter_degree"] = timer
-
+# Compartmentalizes graph type selection
+def find_initial_adopter(graph_index, initial_adopter_approach):
+    if initial_adopter_approach == "greedy":
+        return initial_adopter_selection_greedy(graph_index)
+    if initial_adopter_approach == "degree":
+        return initial_adopter_selection_by_degree(graph_index)
+    if initial_adopter_approach == "influence":
+        return initial_adopter_selection_by_influence(graph_index)
+    if initial_adopter_approach == "discounter_degree":
+        return initial_adopter_selection_by_discounter_degree(graph_index)
+    
 
 def find_equilibrium(graph_index, round_num):
 
@@ -265,21 +254,15 @@ def find_equilibrium(graph_index, round_num):
         if np.array_equal(new_state, agent_state): break
         else:
             agent_state = new_state
-
-
+            
 
 def simulate_next_shock(graph_index, round_num):
     global num_nodes, edge_info, graphs, agent_state, agent_thresholds
     shock_value = np.random.uniform(-1, 1, 1)
     shocked_agent = np.random.binomial(1, SHOCK_PROB, num_nodes)
-
-
     agent_thresholds = agent_thresholds + shock_value * (agent_thresholds - agent_thresholds * agent_thresholds) * shocked_agent
-
     find_equilibrium(graph_index, round_num)
-
-
-
+    
 
 def main():
 
@@ -362,15 +345,12 @@ def main():
                 # indicating the magnitude of threshold
                 initial_thresholds = np.random.uniform(0, 1, num_nodes)
 
-
-                # generating an initial state for all agents
-                # format: array of 0 and 1 indicating the intial adoption decision
-                # 1 for adopters and 0 otherwise
-                # initial_state = np.random.binomial(1, prob_of_initial, num_nodes)
-                find_initial_adopter(graph_type)
-
-
                 for initial_adopter_approach in INITIAL_ADOPTER_GENERATOR:
+                    # select inital adopters
+                    timer = time.time()
+                    initial_states[initial_adopter_approach] = find_initial_adopter(graph_type, initial_adopter_approach)
+                    timer = time.time() - timer
+                    adopter_generation_time[initial_adopter_approach] = timer
 
                     initial_state = initial_states[initial_adopter_approach] * 1
                     agent_thresholds = initial_thresholds * 1
