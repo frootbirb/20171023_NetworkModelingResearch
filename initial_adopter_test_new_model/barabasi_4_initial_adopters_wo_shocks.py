@@ -222,8 +222,23 @@ def initial_adopter_selection_by_discounter_degree(graph_index):
 
     return discounted_degree_optimal
 
+# New algorithm: mix of greedy (with cascades) and discounted degree algorithm
+# graph_index tells us which graph we are looking at (star, random, etc.)
+# Right now graph index is set to 0 in find_equilibrium
+# TODO: update this and make it match the correct graph (by key, preferably)
+def initial_adopter_selection_greedy_discounted_degree (graph_index):
+    # Define global variables. These are all the ones from discounted degree
+    global num_nodes, num_initial_adopter, edge_info
 
+    # Stop the method when there are no initial adopters
+    if (num_initial_adopter == 0): return [0]*num_nodes
 
+    # Initialize return value
+    discounted_greedy_optimal = [0] * num_nodes
+
+    # TODO: Insert method logic here
+
+    return discounted_greedy_optimal
 
 
 def find_initial_adopter(graph_index):
@@ -317,6 +332,15 @@ def main():
     adopter_record_influence = open(dir_name + "/barabasi_{}_{}_influence_adopter.hist".format(BARABASI_EDGE_FACTOR,num_nodes), "w")
     adopter_record_degree = open(dir_name + "/barabasi_{}_{}_degree_adopter.hist".format(BARABASI_EDGE_FACTOR,num_nodes), "w")
     adopter_record_DD = open(dir_name + "/barabasi_{}_{}_DD_adopter.hist".format(BARABASI_EDGE_FACTOR,num_nodes), "w")
+    # adopter_record_discounted_greedy =
+
+    # TODO: Add file output for other types of graphs?
+
+    # adopter_record_greedy_random = open(dir_name + "/random_{}_{}_greedy_adopter.hist".format(?), "w")
+    # adopter_record_influence_random = open(dir_name + "/random_{}_{}_influence_adopter.hist".format(?), "w")
+    # adopter_record_degree_random = open(dir_name + "/random_{}_{}_degree_adopter.hist".format(?), "w")
+    # adopter_record_DD_random = open(dir_name + "/random_{}_{}_DD_adopter.hist".format(?), "w")
+    # adopter_record_discounted_greedy_random =
 
     for graph_num in range(GRAPH_NUM_TRIAL):
 
