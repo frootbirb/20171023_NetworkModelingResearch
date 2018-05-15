@@ -334,7 +334,7 @@ def main():
     adopter_record_DD = open(dir_name + "/barabasi_{}_{}_DD_adopter.hist".format(BARABASI_EDGE_FACTOR,num_nodes), "w")
     # adopter_record_discounted_greedy =
 
-    # TODO: Add file output for other types of graphs?
+    # TODO: Add file output for other types of graphs? 
 
     # adopter_record_greedy_random = open(dir_name + "/random_{}_{}_greedy_adopter.hist".format(?), "w")
     # adopter_record_influence_random = open(dir_name + "/random_{}_{}_influence_adopter.hist".format(?), "w")
