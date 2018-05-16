@@ -447,7 +447,7 @@ def main():
         for initial_adopter_approach, content in graph_info.items():
             for num_adopters, num_adopter_arr in enumerate(content):
                 for graph_num, info in enumerate(num_adopter_arr):
-                    adopter_record.write("{},{},{},{},{},{},{:.5f},{:.5f}".format(
+                    adopter_record.write("{},{},{},{},{},{:.5f},{:.5f}".format(
                       graph_type,
                       graph_num + 1,
                       initial_adopter_approach,
