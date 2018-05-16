@@ -29,11 +29,11 @@ SHOCK_MEAN = 0
 SHOCK_SD = 0.01
 BARABASI_EDGE_FACTOR = 5
 SHOCK_PROB = 0.2
-GRAPH_TOPOLOGY_NAME = ["random", "barabasi_albert", "watts_strogatz", "star"]
+#GRAPH_TOPOLOGY_NAME = ["random", "barabasi_albert", "watts_strogatz", "star"]
+GRAPH_TOPOLOGY_NAME = ["barabasi_albert", "watts_strogatz"]
 INITIAL_ADOPTER_GENERATOR = ["greedy", "degree", "influence", "discounter_degree"]
 WATTS_STROGATZ_REWIRE_FACTOR = 0.2
 WATTS_STROGATZ_NEIGHBOURS = 4
-RANDOM_REGULAR_DEGREE = 4
 
 
 # ==============================================================================
@@ -46,12 +46,12 @@ prob_of_initial = 0
 graphs = {}
 
 initial_thresholds = []
-initial_states = []
-edge_info = []
+initial_states = {}
+edge_info = {}
 agent_state = []
 agent_thresholds = []
 num_initial_adopter = 0
-adopter_generation_time = [0, 0, 0, 0]
+adopter_generation_time = {}
 
 
 def initial_adopter_selection_by_degree(graph_index):
@@ -221,46 +221,19 @@ def initial_adopter_selection_by_discounter_degree(graph_index):
         node = node + 1
 
     return discounted_degree_optimal
+        
 
-# New algorithm: mix of greedy (with cascades) and discounted degree algorithm
-# graph_index tells us which graph we are looking at (star, random, etc.)
-# Right now graph index is set to 0 in find_equilibrium
-# TODO: update this and make it match the correct graph (by key, preferably)
-def initial_adopter_selection_greedy_discounted_degree (graph_index):
-    # Define global variables. These are all the ones from discounted degree
-    global num_nodes, num_initial_adopter, edge_info
-
-    # Stop the method when there are no initial adopters
-    if (num_initial_adopter == 0): return [0]*num_nodes
-
-    # Initialize return value
-    discounted_greedy_optimal = [0] * num_nodes
-
-    # TODO: Insert method logic here
-
-    return discounted_greedy_optimal
-
-
-def find_initial_adopter(graph_index):
-    global initial_states, adopter_generation_time
-    initial_states = []
-    timer = time.time()
-    initial_states.append(initial_adopter_selection_greedy(graph_index))
-    timer = time.time() - timer
-    adopter_generation_time[0] = timer
-    timer = time.time()
-    initial_states.append(initial_adopter_selection_by_degree(graph_index))
-    timer = time.time() - timer
-    adopter_generation_time[1] = timer
-    timer = time.time()
-    initial_states.append(initial_adopter_selection_by_influence(graph_index))
-    timer = time.time() - timer
-    adopter_generation_time[2] = timer
-    timer = time.time()
-    initial_states.append(initial_adopter_selection_by_discounter_degree(graph_index))
-    timer = time.time() - timer
-    adopter_generation_time[3] = timer
-
+# Compartmentalizes graph type selection
+def find_initial_adopter(graph_index, initial_adopter_approach):
+    if initial_adopter_approach == "greedy":
+        return initial_adopter_selection_greedy(graph_index)
+    if initial_adopter_approach == "degree":
+        return initial_adopter_selection_by_degree(graph_index)
+    if initial_adopter_approach == "influence":
+        return initial_adopter_selection_by_influence(graph_index)
+    if initial_adopter_approach == "discounter_degree":
+        return initial_adopter_selection_by_discounter_degree(graph_index)
+    
 
 def find_equilibrium(graph_index, round_num):
 
@@ -281,21 +254,15 @@ def find_equilibrium(graph_index, round_num):
         if np.array_equal(new_state, agent_state): break
         else:
             agent_state = new_state
-
-
+            
 
 def simulate_next_shock(graph_index, round_num):
     global num_nodes, edge_info, graphs, agent_state, agent_thresholds
     shock_value = np.random.uniform(-1, 1, 1)
     shocked_agent = np.random.binomial(1, SHOCK_PROB, num_nodes)
-
-
     agent_thresholds = agent_thresholds + shock_value * (agent_thresholds - agent_thresholds * agent_thresholds) * shocked_agent
-
     find_equilibrium(graph_index, round_num)
-
-
-
+    
 
 def main():
 
@@ -328,19 +295,8 @@ def main():
 
     dir_name = "{}-{}".format(num_nodes,current_time)
     os.mkdir(dir_name)
-    adopter_record_greedy = open(dir_name + "/barabasi_{}_{}_greedy_adopter.hist".format(BARABASI_EDGE_FACTOR,num_nodes), "w")
-    adopter_record_influence = open(dir_name + "/barabasi_{}_{}_influence_adopter.hist".format(BARABASI_EDGE_FACTOR,num_nodes), "w")
-    adopter_record_degree = open(dir_name + "/barabasi_{}_{}_degree_adopter.hist".format(BARABASI_EDGE_FACTOR,num_nodes), "w")
-    adopter_record_DD = open(dir_name + "/barabasi_{}_{}_DD_adopter.hist".format(BARABASI_EDGE_FACTOR,num_nodes), "w")
-    # adopter_record_discounted_greedy =
 
-    # TODO: Add file output for other types of graphs? 
-
-    # adopter_record_greedy_random = open(dir_name + "/random_{}_{}_greedy_adopter.hist".format(?), "w")
-    # adopter_record_influence_random = open(dir_name + "/random_{}_{}_influence_adopter.hist".format(?), "w")
-    # adopter_record_degree_random = open(dir_name + "/random_{}_{}_degree_adopter.hist".format(?), "w")
-    # adopter_record_DD_random = open(dir_name + "/random_{}_{}_DD_adopter.hist".format(?), "w")
-    # adopter_record_discounted_greedy_random =
+    soln_dict = {}
 
     for graph_num in range(GRAPH_NUM_TRIAL):
 
@@ -353,6 +309,9 @@ def main():
                 graphs[graph_type] = nx.watts_strogatz_graph(num_nodes, WATTS_STROGATZ_NEIGHBOURS, WATTS_STROGATZ_REWIRE_FACTOR).to_directed()
             elif graph_type == "star":
                 graph[graph_type] = nx.star_graph(num_nodes).to_directed()
+
+            if graph_type not in soln_dict:
+                soln_dict[graph_type] = {}
 
         edge_in_graph = [[0 for x in range(num_nodes)] for y in range(num_nodes)]
 
@@ -375,7 +334,7 @@ def main():
                 for neighbor_index, neighbor in enumerate(graph.predecessors(node)):
                     edge_in_graph[neighbor][node] = edge_weights[neighbor_index]
 
-            edge_info = [edge_in_graph]
+            edge_info[graph_type] = edge_in_graph
 
             for total_initial_adopters in range(int(num_nodes * 0.1)):
 
@@ -386,57 +345,46 @@ def main():
                 # indicating the magnitude of threshold
                 initial_thresholds = np.random.uniform(0, 1, num_nodes)
 
+                for initial_adopter_approach in INITIAL_ADOPTER_GENERATOR:
+                    # select inital adopters
+                    timer = time.time()
+                    initial_states[initial_adopter_approach] = find_initial_adopter(graph_type, initial_adopter_approach)
+                    timer = time.time() - timer
+                    adopter_generation_time[initial_adopter_approach] = timer
 
-                # generating an initial state for all agents
-                # format: array of 0 and 1 indicating the intial adoption decision
-                # 1 for adopters and 0 otherwise
-                # initial_state = np.random.binomial(1, prob_of_initial, num_nodes)
-                find_initial_adopter(0)
-
-
-                for initial_adopter_approach_index, initial_adopter_approach_name in enumerate(INITIAL_ADOPTER_GENERATOR):
-                # print(initial_adopter_approach_name)
-
-
-                    initial_state = initial_states[initial_adopter_approach_index] * 1
+                    initial_state = initial_states[initial_adopter_approach] * 1
                     agent_thresholds = initial_thresholds * 1
 
                     for i in range(num_nodes):
                         if (initial_state[i] == 1):
                             agent_thresholds[i] = 0
 
-
-                    # agent_state = initial_states[initial_adopter_approach_index] * 1
                     agent_state = initial_state * 1
                     agent_thresholds = initial_thresholds * 1
-
-                    # print(num_initial_adopter)
-                    # print(sum(initial_state))
-
+            
                     for i in range(num_nodes):
                         if (initial_state[i] == 1):
                             agent_thresholds[i] = 0
 
                     timer = time.time()
-                    find_equilibrium(0, 0)
+                    find_equilibrium(graph_type, 0)
                     timer = time.time() - timer
 
-                    if (initial_adopter_approach_index == 0):
-                        adopter_record = adopter_record_greedy
-                    elif (initial_adopter_approach_index == 1):
-                        adopter_record = adopter_record_degree
-                    elif (initial_adopter_approach_index == 2):
-                        adopter_record = adopter_record_influence
-                    elif (initial_adopter_approach_index == 3):
-                        adopter_record = adopter_record_DD
+                    if initial_adopter_approach not in soln_dict[graph_type]:
+                        soln_dict[graph_type][initial_adopter_approach] = []
 
-                    adopter_record.write("{:.5f} {} {} {:.5f}".format(adopter_generation_time[initial_adopter_approach_index], num_initial_adopter, sum(agent_state), timer))
-                    adopter_record.write("\n")
+                    info = "{:.5f} {} {} {:.5f}".format(adopter_generation_time[initial_adopter_approach], num_initial_adopter, sum(agent_state), timer)
+                    
+                    soln_dict[graph_type][initial_adopter_approach].append(info)
 
-    adopter_record_greedy.close()
-    adopter_record_influence.close()
-    adopter_record_degree.close()
-    adopter_record_DD.close()
+    # Handles recorded information and writes to files
+    for graph_type, graph_info in soln_dict.items():
+        for initial_adopter_approach, content in graph_info.items():
+            adopter_record = open(dir_name + "/{}_{}_{}.hist".format(num_nodes,graph_type,initial_adopter_approach), "w")
+            for line in content:
+                adopter_record.write(line)
+                adopter_record.write("\n")
+            adopter_record.close()
 
 
 main()
