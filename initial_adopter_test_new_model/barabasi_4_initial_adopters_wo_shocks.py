@@ -436,7 +436,7 @@ def main():
                         
                     soln_dict[graph_type][initial_adopter_approach].append([])
 
-                    info = (sum(agent_state), adopter_generation_time[initial_adopter_approach], timer)
+                    info = (sum(agent_state), adopter_generation_time[initial_adopter_approach], timer, initial_state)
                     
                     soln_dict[graph_type][initial_adopter_approach][num_initial_adopter - 1].append(info)
                     
@@ -447,14 +447,15 @@ def main():
         for initial_adopter_approach, content in graph_info.items():
             for num_adopters, num_adopter_arr in enumerate(content):
                 for graph_num, info in enumerate(num_adopter_arr):
-                    adopter_record.write("{},{},{},{},{},{:.5f},{:.5f}".format(
+                    adopter_record.write("{},{},{},{},{},{:.5f},{:.5f},{}".format(
                       graph_type,
                       graph_num + 1,
                       initial_adopter_approach,
                       num_adopters + 1,
                       info[0],
                       info[1],
-                      info[2]))
+                      info[2],
+                      info[3]))
                     adopter_record.write("\n")
                     
     adopter_record.close()
