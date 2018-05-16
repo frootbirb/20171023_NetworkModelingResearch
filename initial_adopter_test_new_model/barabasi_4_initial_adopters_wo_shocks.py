@@ -18,20 +18,36 @@ import timeit                       # Timing
 import yaml                         # YAML parsing
 import random
 import time
+import struct
 from datetime import datetime       # Capture current time
 
 
 # ==============================================================================
 # GLOBAL CONSTANTS
 # ==============================================================================
+
+# WHEN ADDING NEW GRAPH TOPOLOGIES: Add new entry to class below, add function call in find_initial_adopter()
+class Topologies:
+    random = "random"
+    barabasi = "barabasi_albert"
+    watts = "watts_strogatz"
+    star = "star"
+# WHEN ADDING NEW HEURISTICS: Add new entry to class below, add function call in find_initial_adopter()
+class Heuristics:
+    greedy = "greedy"
+    deg = "degree"
+    inf = "influence"
+    dd = "discounted_degree"
+
+HEUR = Heuristics()
+TOP = Topologies()
 GRAPH_NUM_TRIAL = 40
 SHOCK_MEAN = 0
 SHOCK_SD = 0.01
 BARABASI_EDGE_FACTOR = 5
 SHOCK_PROB = 0.2
-#GRAPH_TOPOLOGY_NAME = ["random", "barabasi_albert", "watts_strogatz", "star"]
-GRAPH_TOPOLOGY_NAME = ["barabasi_albert", "watts_strogatz"]
-INITIAL_ADOPTER_GENERATOR = ["greedy", "degree", "influence", "discounter_degree"]
+GRAPH_TOPOLOGY_NAME = [TOP.barabasi, TOP.watts]
+INITIAL_ADOPTER_GENERATOR = [HEUR.greedy, HEUR.deg, HEUR.inf, HEUR.dd]
 WATTS_STROGATZ_REWIRE_FACTOR = 0.2
 WATTS_STROGATZ_NEIGHBOURS = 4
 
@@ -53,6 +69,31 @@ agent_thresholds = []
 num_initial_adopter = 0
 adopter_generation_time = {}
 
+
+# Compartmentalizes heuristic selection so each type runs iff it's in the list
+def find_initial_adopter(graph_index, initial_adopter_approach):
+    if initial_adopter_approach == HEUR.greedy:
+        return initial_adopter_selection_greedy(graph_index)
+    elif initial_adopter_approach == HEUR.deg:
+        return initial_adopter_selection_by_degree(graph_index)
+    elif initial_adopter_approach == HEUR.inf:
+        return initial_adopter_selection_by_influence(graph_index)
+    elif initial_adopter_approach == HEUR.dd:
+        return initial_adopter_selection_by_discounted_degree(graph_index)
+
+        
+# Compartmentalizes graph creation so each type runs iff it's in the list
+def make_graph(graph_type):
+    global num_nodes, graphs
+    if graph_type == TOP.barabasi:
+        graphs[graph_type] = nx.barabasi_albert_graph(num_nodes, BARABASI_EDGE_FACTOR).to_directed()
+    elif graph_type == TOP.random:
+        graphs[graph_type] = nx.random_regular_graph(num_nodes, RANDOM_REGULAR_DEGREE).to_directed()
+    elif graph_type == TOP.watts:
+        graphs[graph_type] = nx.watts_strogatz_graph(num_nodes, WATTS_STROGATZ_NEIGHBOURS, WATTS_STROGATZ_REWIRE_FACTOR).to_directed()
+    elif graph_type == TOP.star:
+        graph[graph_type] = nx.star_graph(num_nodes).to_directed()
+        
 
 def initial_adopter_selection_by_degree(graph_index):
     global edge_info, num_initial_adopter
@@ -83,11 +124,8 @@ def initial_adopter_selection_by_degree(graph_index):
         if (sum(initial_adopter_by_degree) == num_initial_adopter): break
 
     return initial_adopter_by_degree
-
-
-
-
-
+    
+    
 def initial_adopter_selection_by_influence(graph_index):
     global edge_info, num_initial_adopter
 
@@ -112,10 +150,8 @@ def initial_adopter_selection_by_influence(graph_index):
         if (sum(initial_adopter_by_influence) == num_initial_adopter): break
 
     return initial_adopter_by_influence
-
-
-
-
+    
+    
 def run_til_eq(graph_index, state, node_to_try, dynamic_threshold):
 
     global edge_info, num_nodes, edge_info
@@ -139,11 +175,8 @@ def run_til_eq(graph_index, state, node_to_try, dynamic_threshold):
         state_copy = new_state * 1
 
     return sum(new_state)-sum(state)
-
-
-
-
-
+    
+    
 def initial_adopter_selection_greedy(graph_index):
     global initial_thresholds, num_nodes, edge_info
 
@@ -185,8 +218,7 @@ def initial_adopter_selection_greedy(graph_index):
     return greedy_optimal
 
 
-
-def initial_adopter_selection_by_discounter_degree(graph_index):
+def initial_adopter_selection_by_discounted_degree(graph_index):
     global num_nodes, num_initial_adopter, edge_info
 
     if (num_initial_adopter == 0): return [0]*num_nodes
@@ -221,20 +253,27 @@ def initial_adopter_selection_by_discounter_degree(graph_index):
         node = node + 1
 
     return discounted_degree_optimal
-        
 
-# Compartmentalizes graph type selection
-def find_initial_adopter(graph_index, initial_adopter_approach):
-    if initial_adopter_approach == "greedy":
-        return initial_adopter_selection_greedy(graph_index)
-    if initial_adopter_approach == "degree":
-        return initial_adopter_selection_by_degree(graph_index)
-    if initial_adopter_approach == "influence":
-        return initial_adopter_selection_by_influence(graph_index)
-    if initial_adopter_approach == "discounter_degree":
-        return initial_adopter_selection_by_discounter_degree(graph_index)
     
+# New algorithm: mix of greedy (with cascades) and discounted degree algorithm
+# graph_index tells us which graph we are looking at (star, random, etc.)
+# Right now graph index is set to 0 in find_equilibrium
+# TODO: update this and make it match the correct graph (by key, preferably)
+def initial_adopter_selection_greedy_discounted_degree (graph_index):
+    # Define global variables. These are all the ones from discounted degree
+    global num_nodes, num_initial_adopter, edge_info
 
+    # Stop the method when there are no initial adopters
+    if (num_initial_adopter == 0): return [0]*num_nodes
+
+    # Initialize return value
+    discounted_greedy_optimal = [0] * num_nodes
+
+    # TODO: Insert method logic here
+
+    return discounted_greedy_optimal
+
+    
 def find_equilibrium(graph_index, round_num):
 
     global num_nodes, graphs, edge_info, agent_state
@@ -254,14 +293,6 @@ def find_equilibrium(graph_index, round_num):
         if np.array_equal(new_state, agent_state): break
         else:
             agent_state = new_state
-            
-
-def simulate_next_shock(graph_index, round_num):
-    global num_nodes, edge_info, graphs, agent_state, agent_thresholds
-    shock_value = np.random.uniform(-1, 1, 1)
-    shocked_agent = np.random.binomial(1, SHOCK_PROB, num_nodes)
-    agent_thresholds = agent_thresholds + shock_value * (agent_thresholds - agent_thresholds * agent_thresholds) * shocked_agent
-    find_equilibrium(graph_index, round_num)
     
 
 def main():
@@ -293,23 +324,19 @@ def main():
     # name files using current time
     current_time = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
 
+    # adds new directory titled by the date/time and number of nodes
     dir_name = "{}-{}".format(num_nodes,current_time)
     os.mkdir(dir_name)
 
+    # initialize the dictionary of solutions (replacement for adopter_record_xxx variables)
     soln_dict = {}
 
     for graph_num in range(GRAPH_NUM_TRIAL):
 
         for graph_type in GRAPH_TOPOLOGY_NAME:
-            if graph_type == "barabasi_albert":
-                graphs[graph_type] = nx.barabasi_albert_graph(num_nodes, BARABASI_EDGE_FACTOR).to_directed()
-            elif graph_type == "random":
-                graphs[graph_type] = nx.random_regular_graph(num_nodes, RANDOM_REGULAR_DEGREE).to_directed()
-            elif graph_type == "watts_strogatz":
-                graphs[graph_type] = nx.watts_strogatz_graph(num_nodes, WATTS_STROGATZ_NEIGHBOURS, WATTS_STROGATZ_REWIRE_FACTOR).to_directed()
-            elif graph_type == "star":
-                graph[graph_type] = nx.star_graph(num_nodes).to_directed()
+            make_graph(graph_type)
 
+            # initializes graph's solution type dictionary
             if graph_type not in soln_dict:
                 soln_dict[graph_type] = {}
 
@@ -346,7 +373,7 @@ def main():
                 initial_thresholds = np.random.uniform(0, 1, num_nodes)
 
                 for initial_adopter_approach in INITIAL_ADOPTER_GENERATOR:
-                    # select inital adopters
+                    # select inital adopters and time selection process
                     timer = time.time()
                     initial_states[initial_adopter_approach] = find_initial_adopter(graph_type, initial_adopter_approach)
                     timer = time.time() - timer
@@ -366,10 +393,12 @@ def main():
                         if (initial_state[i] == 1):
                             agent_thresholds[i] = 0
 
+                    # perform propogation and time propogation process
                     timer = time.time()
                     find_equilibrium(graph_type, 0)
                     timer = time.time() - timer
 
+                    # initializes solution type's solution information array
                     if initial_adopter_approach not in soln_dict[graph_type]:
                         soln_dict[graph_type][initial_adopter_approach] = []
 
