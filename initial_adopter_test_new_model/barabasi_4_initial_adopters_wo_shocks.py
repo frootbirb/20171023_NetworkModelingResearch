@@ -34,6 +34,7 @@ class Heuristics:
     deg = "degree"
     inf = "influence"
     dd = "discounted_degree"
+    gdd = "greedy_disc_degree"
 
 HEUR = Heuristics()
 TOP = Topologies()
@@ -43,7 +44,7 @@ SHOCK_SD = 0.01
 BARABASI_EDGE_FACTOR = 5
 SHOCK_PROB = 0.2
 GRAPH_TOPOLOGY_NAME = [TOP.barabasi, TOP.watts]
-INITIAL_ADOPTER_GENERATOR = [HEUR.greedy, HEUR.deg, HEUR.inf, HEUR.dd]
+INITIAL_ADOPTER_GENERATOR = [HEUR.greedy, HEUR.deg, HEUR.inf, HEUR.dd, HEUR.gdd]
 WATTS_STROGATZ_REWIRE_FACTOR = 0.2
 WATTS_STROGATZ_NEIGHBOURS = 4
 
@@ -76,6 +77,8 @@ def find_initial_adopter(graph_index, initial_adopter_approach):
         return initial_adopter_selection_by_influence(graph_index)
     elif initial_adopter_approach == HEUR.dd:
         return initial_adopter_selection_by_discounted_degree(graph_index)
+    elif initial_adopter_approach == HEUR.gdd:
+        return initial_adopter_selection_greedy_discounted_degree(graph_index)
 
         
 # Compartmentalizes graph creation so each type runs iff it's in the list
@@ -357,10 +360,6 @@ def main():
     # name files using current time
     current_time = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
 
-    # adds new directory titled by the date/time and number of nodes
-    dir_name = "run-{}-{}".format(num_nodes,current_time)
-    os.mkdir(dir_name)
-
     # initialize the dictionary of solutions (replacement for adopter_record_xxx variables)
     soln_dict = {}
 
@@ -434,19 +433,31 @@ def main():
                     # initializes solution type's solution information array
                     if initial_adopter_approach not in soln_dict[graph_type]:
                         soln_dict[graph_type][initial_adopter_approach] = []
+                        
+                    soln_dict[graph_type][initial_adopter_approach].append([])
 
-                    info = "{:.5f} {} {} {:.5f}".format(adopter_generation_time[initial_adopter_approach], num_initial_adopter, sum(agent_state), timer)
+                    info = (sum(agent_state), adopter_generation_time[initial_adopter_approach], timer)
                     
-                    soln_dict[graph_type][initial_adopter_approach].append(info)
+                    soln_dict[graph_type][initial_adopter_approach][num_initial_adopter - 1].append(info)
+                    
 
-    # Handles recorded information and writes to files
+    # Handles recorded information and writes to csv files
+    adopter_record = open("run-{}-{}.csv".format(num_nodes,current_time), "w")
     for graph_type, graph_info in soln_dict.items():
         for initial_adopter_approach, content in graph_info.items():
-            adopter_record = open(dir_name + "/{}_{}_{}.hist".format(num_nodes,graph_type,initial_adopter_approach), "w")
-            for line in content:
-                adopter_record.write(line)
-                adopter_record.write("\n")
-            adopter_record.close()
+            for num_adopters, num_adopter_arr in enumerate(content):
+                for graph_num, info in enumerate(num_adopter_arr):
+                    adopter_record.write("{},{},{},{},{},{},{:.5f},{:.5f}".format(
+                      graph_type,
+                      graph_num + 1,
+                      initial_adopter_approach,
+                      num_adopters + 1,
+                      info[0],
+                      info[1],
+                      info[2]))
+                    adopter_record.write("\n")
+                    
+    adopter_record.close()
 
 
 main()
