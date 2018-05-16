@@ -101,7 +101,7 @@ def initial_adopter_selection_by_influence(graph_index):
         for j in range(i, num_nodes):
             if (node_influence[i] < node_influence[j]):
                 temp = node_influence[i]
-                node_influence[i] =node_influence[j]
+                node_influence[i] = node_influence[j]
                 node_influence[j] = temp
     lowest_influence = node_influence[num_initial_adopter-1]
 
