@@ -80,7 +80,7 @@ def find_initial_adopter(graph_index, initial_adopter_approach):
     elif initial_adopter_approach == HEUR.gdd:
         return initial_adopter_selection_greedy_discounted_degree(graph_index)
 
-        
+
 # Compartmentalizes graph creation so each type runs iff it's in the list
 def make_graph(graph_type):
     global num_nodes, graphs
@@ -92,7 +92,7 @@ def make_graph(graph_type):
         graphs[graph_type] = nx.watts_strogatz_graph(num_nodes, WATTS_STROGATZ_NEIGHBOURS, WATTS_STROGATZ_REWIRE_FACTOR).to_directed()
     elif graph_type == TOP.star:
         graph[graph_type] = nx.star_graph(num_nodes).to_directed()
-        
+
 
 def initial_adopter_selection_by_degree(graph_index):
     global edge_info, num_initial_adopter
@@ -123,8 +123,8 @@ def initial_adopter_selection_by_degree(graph_index):
         if (sum(initial_adopter_by_degree) == num_initial_adopter): break
 
     return initial_adopter_by_degree
-    
-    
+
+
 def initial_adopter_selection_by_influence(graph_index):
     global edge_info, num_initial_adopter
 
@@ -149,8 +149,8 @@ def initial_adopter_selection_by_influence(graph_index):
         if (sum(initial_adopter_by_influence) == num_initial_adopter): break
 
     return initial_adopter_by_influence
-    
-    
+
+
 def run_til_eq(graph_index, state, node_to_try, dynamic_threshold):
 
     global edge_info, num_nodes, edge_info
@@ -174,8 +174,8 @@ def run_til_eq(graph_index, state, node_to_try, dynamic_threshold):
         state_copy = new_state * 1
 
     return sum(new_state)-sum(state)
-    
-    
+
+
 def initial_adopter_selection_greedy(graph_index):
     global initial_thresholds, num_nodes, edge_info, num_initial_adopter
 
@@ -254,11 +254,8 @@ def initial_adopter_selection_by_discounted_degree(graph_index):
 
     return discounted_degree_optimal
 
-    
-# New algorithm: mix of greedy (with cascades) and discounted degree algorithm
-# graph_index tells us which graph we are looking at (star, random, etc.)
-# Right now graph index is set to 0 in find_equilibrium
-# TODO: update this and make it match the correct graph (by key, preferably)
+
+# New hybrid algorithm: mix of greedy (with cascades) and discounted degree
 def initial_adopter_selection_greedy_discounted_degree (graph_index):
     global initial_thresholds, num_nodes, edge_info, num_initial_adopter
 
@@ -266,50 +263,50 @@ def initial_adopter_selection_greedy_discounted_degree (graph_index):
 
     dynamic_threshold = initial_thresholds * 1
     num_converted = [-1] * num_nodes
-    greedy_optimal = [0] * num_nodes
+    greedy_discounted_optimal = [0] * num_nodes
 
     state = [0] * num_nodes
 
     initial_node_degree = [0] * num_nodes
 
-    #Calculate initial degrees
+    # Calculate initial degrees
     for node in range(num_nodes):
         for neighbor in range(num_nodes):
             if (edge_info[graph_index][node][neighbor] != 0):
                 initial_node_degree[node] = initial_node_degree[node] + 1
 
-    while ((sum(greedy_optimal) != num_initial_adopter) and (sum(state) != num_nodes)):
+    while ((sum(greedy_discounted_optimal) != num_initial_adopter) and (sum(state) != num_nodes)):
         # Selects maximum degree node in terms of unselected nodes
         max_index = initial_node_degree.index(max(initial_node_degree))
-        greedy_optimal[max_index] = 1
+        greedy_discounted_optimal[max_index] = 1
         initial_node_degree[max_index] = 0
 
         # Calculate equilibrium
         while 1:
             new_state = state * 1
-            
+
             for node in range(num_nodes):
                 if (state[node] == 1): continue
-                
+
                 # Calculate influence from neighbour
                 influence_from_neighbor = 0
                 for neighbor in range(num_nodes):
                     influence_from_neighbor = influence_from_neighbor + state[neighbor] * edge_info[graph_index][neighbor][node]
-                
+
                 # If influence is high enough, switch action and propogate degree changes
-                if(influence_from_neighbor >= dynamic_threshold[node]): 
+                if(influence_from_neighbor >= dynamic_threshold[node]):
                     new_state[node] = 1
                     for neighbor in range(num_nodes):
-                        if (edge_info[graph_index][neighbor][node] != 0 and discounted_degree_optimal[neighbor] != 1):
+                        if (edge_info[graph_index][neighbor][node] != 0 and greedy_discounted_optimal[neighbor] != 1):
                             initial_node_degree[neighbor] = initial_node_degree[neighbor] - 1
 
             # While condition of simulated do-while loop - if nothing changed
             if(sum(new_state) == sum(state)):
                 break
-        
-    return greedy_optimal
 
-    
+    return greedy_discounted_optimal
+
+
 def find_equilibrium(graph_index, round_num):
 
     global num_nodes, graphs, edge_info, agent_state
@@ -329,7 +326,7 @@ def find_equilibrium(graph_index, round_num):
         if np.array_equal(new_state, agent_state): break
         else:
             agent_state = new_state
-    
+
 
 def main():
 
@@ -420,7 +417,7 @@ def main():
 
                     agent_state = initial_state * 1
                     agent_thresholds = initial_thresholds * 1
-            
+
                     for i in range(num_nodes):
                         if (initial_state[i] == 1):
                             agent_thresholds[i] = 0
@@ -433,13 +430,13 @@ def main():
                     # initializes solution type's solution information array
                     if initial_adopter_approach not in soln_dict[graph_type]:
                         soln_dict[graph_type][initial_adopter_approach] = []
-                        
+
                     soln_dict[graph_type][initial_adopter_approach].append([])
 
                     info = (sum(agent_state), adopter_generation_time[initial_adopter_approach], timer, initial_state)
-                    
+
                     soln_dict[graph_type][initial_adopter_approach][num_initial_adopter - 1].append(info)
-                    
+
 
     # Handles recorded information and writes to csv files
     adopter_record = open("run-{}-{}.csv".format(num_nodes,current_time), "w")
@@ -457,7 +454,7 @@ def main():
                       info[2],
                       info[3]))
                     adopter_record.write("\n")
-                    
+
     adopter_record.close()
 
 
