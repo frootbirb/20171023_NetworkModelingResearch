@@ -321,7 +321,7 @@ def main():
     current_time = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
 
     # adds new directory titled by the date/time and number of nodes
-    dir_name = "{}-{}".format(num_nodes,current_time)
+    dir_name = "run-{}-{}".format(num_nodes,current_time)
     os.mkdir(dir_name)
 
     # initialize the dictionary of solutions (replacement for adopter_record_xxx variables)
