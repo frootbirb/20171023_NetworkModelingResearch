@@ -8,17 +8,12 @@
 # ==============================================================================
 # LIBRARIES
 # ==============================================================================
-import bisect                       # For CDF functionality
 import networkx as nx               # Constructing and visualizing graph
 import numpy as np                  # Numerical methods
 import os                           # File reading and checking
-import re                           # Output formatting
 import sys                          # Command line argument parsing
-import timeit                       # Timing
-import yaml                         # YAML parsing
 import random
 import time
-import struct
 from datetime import datetime       # Capture current time
 
 
@@ -32,6 +27,7 @@ class Topologies:
     barabasi = "barabasi_albert"
     watts = "watts_strogatz"
     star = "star"
+
 # WHEN ADDING NEW HEURISTICS: Add new entry to class below, add function call in find_initial_adopter()
 class Heuristics:
     greedy = "greedy"
