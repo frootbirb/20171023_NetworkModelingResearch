@@ -40,10 +40,11 @@ HEUR = Heuristics()
 TOP = Topologies()
 GRAPH_NUM_TRIAL = 40
 BARABASI_EDGE_FACTOR = 5
-GRAPH_TOPOLOGY_NAME = [TOP.barabasi, TOP.watts, TOP.star, TOP.random]
+GRAPH_TOPOLOGY_NAME = [TOP.barabasi, TOP.watts, TOP.random, TOP.star]
 INITIAL_ADOPTER_GENERATOR = [HEUR.dd, HEUR.greedy, HEUR.gdd]
 WATTS_STROGATZ_REWIRE_FACTOR = 0.2
-WATTS_STROGATZ_NEIGHBOURS = 4
+WATTS_STROGATZ_EDGE_FACTOR = 4
+RANDOM_EDGE_FACTOR = 4
 
 
 # ==============================================================================
@@ -84,11 +85,11 @@ def make_graph(graph_type):
     if graph_type == TOP.barabasi:
         graphs[graph_type] = nx.barabasi_albert_graph(num_nodes, BARABASI_EDGE_FACTOR).to_directed()
     elif graph_type == TOP.random:
-        graphs[graph_type] = nx.random_regular_graph(num_nodes, RANDOM_REGULAR_DEGREE).to_directed()
+        graphs[graph_type] = nx.random_regular_graph(RANDOM_EDGE_FACTOR, num_nodes).to_directed()
     elif graph_type == TOP.watts:
-        graphs[graph_type] = nx.watts_strogatz_graph(num_nodes, WATTS_STROGATZ_NEIGHBOURS, WATTS_STROGATZ_REWIRE_FACTOR).to_directed()
+        graphs[graph_type] = nx.watts_strogatz_graph(num_nodes, WATTS_STROGATZ_EDGE_FACTOR, WATTS_STROGATZ_REWIRE_FACTOR).to_directed()
     elif graph_type == TOP.star:
-        graph[graph_type] = nx.star_graph(num_nodes).to_directed()
+        graphs[graph_type] = nx.star_graph(num_nodes-1).to_directed()
 
 
 def initial_adopter_selection_by_degree(graph_index):
@@ -361,6 +362,8 @@ def main():
 
         for graph_type in GRAPH_TOPOLOGY_NAME:
             make_graph(graph_type)
+            
+            print(graph_type)
 
             # initializes graph's solution type dictionary
             if graph_type not in soln_dict:
