@@ -362,9 +362,7 @@ def main():
 
         for graph_type in GRAPH_TOPOLOGY_NAME:
             make_graph(graph_type)
-            
-            print(graph_type)
-
+         
             # initializes graph's solution type dictionary
             if graph_type not in soln_dict:
                 soln_dict[graph_type] = {}
