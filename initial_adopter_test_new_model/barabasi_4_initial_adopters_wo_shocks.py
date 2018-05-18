@@ -14,6 +14,7 @@ import os                           # File reading and checking
 import sys                          # Command line argument parsing
 import random
 import time
+import matplotlib.pyplot as plt
 from datetime import datetime       # Capture current time
 
 
@@ -45,6 +46,8 @@ INITIAL_ADOPTER_GENERATOR = [HEUR.dd, HEUR.greedy, HEUR.gdd]
 WATTS_STROGATZ_REWIRE_FACTOR = 0.2
 WATTS_STROGATZ_EDGE_FACTOR = 4
 RANDOM_EDGE_FACTOR = 4
+
+DEBUG = False
 
 
 # ==============================================================================
@@ -259,7 +262,6 @@ def initial_adopter_selection_greedy_discounted_degree (graph_index):
 
     if (num_initial_adopter == 0): return [0]*num_nodes
 
-    dynamic_threshold = initial_thresholds * 1
     num_converted = [-1] * num_nodes
     greedy_discounted_optimal = [0] * num_nodes
 
@@ -272,16 +274,25 @@ def initial_adopter_selection_greedy_discounted_degree (graph_index):
         for neighbor in range(num_nodes):
             if (edge_info[graph_index][node][neighbor] != 0):
                 initial_node_degree[node] = initial_node_degree[node] + 1
+                
+    if(DEBUG): print(initial_node_degree)
 
     while ((sum(greedy_discounted_optimal) != num_initial_adopter) and (sum(state) != num_nodes)):
         # Selects maximum degree node in terms of unselected nodes
         max_index = initial_node_degree.index(max(initial_node_degree))
         greedy_discounted_optimal[max_index] = 1
         initial_node_degree[max_index] = 0
+        state[max_index] = 1
 
+        new_state = state * 1
+        
+        if(DEBUG): print("Selected node {}".format(max_index))
+        
         # Calculate equilibrium
         while 1:
-            new_state = state * 1
+            state = new_state * 1
+            
+            if(DEBUG): print("\tState: {}".format(state))
 
             for node in range(num_nodes):
                 if (state[node] == 1): continue
@@ -292,15 +303,20 @@ def initial_adopter_selection_greedy_discounted_degree (graph_index):
                     influence_from_neighbor = influence_from_neighbor + state[neighbor] * edge_info[graph_index][neighbor][node]
 
                 # If influence is high enough, switch action and propogate degree changes
-                if(influence_from_neighbor >= dynamic_threshold[node]):
+                if(influence_from_neighbor >= initial_thresholds[node]):
                     new_state[node] = 1
+                    initial_node_degree[node] = 0
                     for neighbor in range(num_nodes):
-                        if (edge_info[graph_index][neighbor][node] != 0 and greedy_discounted_optimal[neighbor] != 1):
+                        if (edge_info[graph_index][neighbor][node] != 0 and new_state[neighbor] != 1):
                             initial_node_degree[neighbor] = initial_node_degree[neighbor] - 1
 
             # While condition of simulated do-while loop - if nothing changed
             if(sum(new_state) == sum(state)):
                 break
+                
+    if(DEBUG):   
+        nx.draw(graphs[graph_index], with_labels=True)
+        plt.show()
 
     return greedy_discounted_optimal
 
